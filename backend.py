@@ -1,6 +1,9 @@
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
 
+from anilist import getAniListWatchedList
+from mal import getMalWatchedList
+
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 app.config['CORS_HEADERS'] = 'Content-Type'
@@ -20,6 +23,14 @@ def getGenresRequest():
 @app.route("/aniRequest", methods=['GET'])
 def getRecRequest():
     malAccount=request.args.get('malAccount', '')
+    anilistAccount=request.args.get('anilistAccount', '')
+    malWatchedList = []
+    anilistWatchedList = []
+    if (len(malAccount) > 0):
+        malWatchedList = getMalWatchedList(malAccount)
+    if (len(malAccount) > 0):
+        anilistWatchedList = getAniListWatchedList(anilistAccount)
+    
     print (malAccount)
     print(request.args)
 
