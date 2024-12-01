@@ -1,11 +1,13 @@
+import json
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
 
-from anilist import getAniListWatchedList
+from anilist import getAniListWatchedList, getRecommendedAnime, updateGenresList
+from databaseRequests import getGenres, preCheckUpdateGenreList
 from mal import getMalWatchedList
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+cors = CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://localhost:3001"]}})
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 @app.route("/", methods=['POST', 'GET'])
@@ -18,23 +20,33 @@ def testRequestContextStuff():
 
 @app.route("/getGenres", methods=['GET'])
 def getGenresRequest():
-    return "<p>This is Get Genres!</p>"
+    if(preCheckUpdateGenreList()):
+        updateGenresList()
+    genreList = getGenres()
+    return genreList
 
-@app.route("/aniRequest", methods=['GET'])
+@app.route("/aniRequest", methods=['POST'])
 def getRecRequest():
-    malAccount=request.args.get('malAccount', '')
-    anilistAccount=request.args.get('anilistAccount', '')
+    malAccount=request.json["malAccount"]
+    anilistAccount=request.json["anilistAccount"]
+    enableAdultContent=request.json["enableAdultContent"]
+    minDate=request.json["minDate"]
+    maxDate=request.json["maxDate"]
+    genreFilter=request.json["genreFilter"]
+    excludedGenreFilter=request.json["excludedGenreFilter"]
     malWatchedList = []
     anilistWatchedList = []
-    if (len(malAccount) > 0):
-        malWatchedList = getMalWatchedList(malAccount)
-    if (len(malAccount) > 0):
-        anilistWatchedList = getAniListWatchedList(anilistAccount)
-    
-    print (malAccount)
-    print(request.args)
+    #if (len(malAccount) > 0):
+    #    malWatchedList = getMalWatchedList(malAccount, enableAdultContent)
+    #if (len(anilistAccount) > 0):
+    #    anilistWatchedList = getAniListWatchedList(anilistAccount)
 
-    return {'requestArgs':request.args}
+    for filter in genreFilter:
+        print (filter)
+
+    getRecommendedAnime(request.json, malWatchedList, anilistWatchedList)
+
+    return {'requestArgs': request.json}
 
 if __name__ == '__main__':
     app.run()

@@ -3,6 +3,9 @@ import re
 import requests
 import validators
 
+from databaseRequests import setNeedsGenreUpdate, tryAddGenreToDB, tryAddTagToDB
+from mal import MalWatchedList
+
 class AniListWatchedList:
   def __init__(self, id, malid, name, listItemId):
     self.id = id
@@ -101,3 +104,103 @@ def convertToAccountName(accountNameOrUrl):
     if matchList != None:
         return matchList[2]
     return accountNameOrUrl
+
+def updateGenresList():
+    
+    print("Updating Genres List")
+    url = 'https://graphql.anilist.co'
+
+    query = '''
+    query {
+    MediaTagCollection {
+        description
+        id
+        isAdult
+        name
+        category
+    }
+    }
+    '''
+
+    query2 = '''
+    query {
+        GenreCollection
+    }
+    '''
+    variables = {}
+
+    response = requests.post(url, json={'query': query, 'variables': variables})
+
+    if (response.status_code == 200):
+        # print("It didn't explode!")
+        myJson = response.content.decode('utf8')
+        data = json.loads(myJson)
+        for datum in data["data"]["MediaTagCollection"]:
+            tryAddTagToDB(datum)
+
+    else:
+        print("Oh no! It exploded!")
+        print(response)
+        print(response.content)
+        print(response.json)
+
+    response2 = requests.post(url, json={'query': query2, 'variables': variables})
+
+    if (response2.status_code == 200):
+        # print("It didn't explode!")
+        myJson = response2.content.decode('utf8')
+        data = json.loads(myJson)
+        # print (data)
+        for datum in data["data"]["GenreCollection"]:
+            tryAddGenreToDB(datum)
+    else:
+        print("Oh no! It exploded!")
+        print(response2)
+        print(response2.content)
+        print(response2.json)
+    setNeedsGenreUpdate()
+
+def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatchedList:AniListWatchedList):
+
+    print("hello world!")
+    
+    MWLArray = convertMWLToIntArray(malWatchedList)
+    ALArray = convertAWLToIntArray(anilistWatchedList)
+
+    url = 'https://graphql.anilist.co'
+    query = '''
+    query Media($genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String], $idNotIn: [Int], $idMalNotIn: [Int], $isAdult: Boolean, $startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt) {
+    Media(genre_in: $genreIn, genre_not_in: $genreNotIn, tag_in: $tagIn, tag_not_in: $tagNotIn, id_not_in: $idNotIn, idMal_not_in: $idMalNotIn, isAdult: $isAdult, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, type: ANIME) {
+        averageScore
+        coverImage {
+        extraLarge
+        }
+        isAdult
+        description
+        title {
+        userPreferred
+        romaji
+        english
+        }
+    }
+    }
+    '''
+    variables = {
+        'idNotIn': ALArray,
+        'idMalNotIn': MWLArray,
+        'isAdult': requestInfo["enableAdultContent"],
+        'startDateGreater': requestInfo["minDate"] + "0000",
+        'startDateLesser': requestInfo["maxDate"] + "0000"
+    }
+
+def convertMWLToIntArray(malWatchedList:MalWatchedList):
+    returnArray = []
+    for listItem in malWatchedList:
+        returnArray.append(listItem.id)
+    return returnArray
+
+def convertAWLToIntArray(anilistWatchedList:AniListWatchedList):
+    returnArray = []
+    for listItem in malWatchedList:
+        returnArray.append(listItem.id)
+    return returnArray

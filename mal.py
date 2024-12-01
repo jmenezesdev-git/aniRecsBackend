@@ -16,7 +16,7 @@ class CountData:
         self.countH = 0
         self.countP = 0
 
-def getMalWatchedList(accountNameOrUrl):
+def getMalWatchedList(accountNameOrUrl, enableAdultContent):
     accountName = ""
     malWatchedList = []  
     countData = CountData()  
@@ -31,7 +31,10 @@ def getMalWatchedList(accountNameOrUrl):
 
 
     # https://api.myanimelist.net/v2/users/etherealAffairs/animelist
-        x = requests.get('https://api.myanimelist.net/v2/users/' + accountName + '/animelist' + '?fields=list_status&limit=50', headers=aniReqHeader)
+        if(enableAdultContent == 'true'):
+            x = requests.get('https://api.myanimelist.net/v2/users/' + accountName + '/animelist' + '?fields=list_status&limit=50&nsfw=true', headers=aniReqHeader)
+        else:
+            x = requests.get('https://api.myanimelist.net/v2/users/' + accountName + '/animelist' + '?fields=list_status&limit=50', headers=aniReqHeader)
         # &nsfw=true
 
         if (x.status_code == 200):
