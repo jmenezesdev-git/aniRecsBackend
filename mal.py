@@ -35,53 +35,46 @@ def getMalWatchedList(accountNameOrUrl, enableAdultContent):
             x = requests.get('https://api.myanimelist.net/v2/users/' + accountName + '/animelist' + '?fields=list_status&limit=50&nsfw=true', headers=aniReqHeader)
         else:
             x = requests.get('https://api.myanimelist.net/v2/users/' + accountName + '/animelist' + '?fields=list_status&limit=50', headers=aniReqHeader)
-        # &nsfw=true
 
         if (x.status_code == 200):
-            print("SUCCESS")
             myJson = x.content.decode('utf8').replace("'", '"')
             data = json.loads(myJson)
             #add data to list
             addDataToMalWatchedList(malWatchedList, data["data"], countData)
-            print(data["paging"]["next"])
+            #print(data["paging"]["next"])
             if (len(data["data"]) > 0):
-                print (len(data["data"]))
                 while (len(data["data"]) > 0 and "next" in data["paging"]):
                     x = requests.get(data["paging"]["next"], headers=aniReqHeader)
                     if (x.status_code == 200):
-                        print(x.content)
                         myJson = x.content.decode('utf8')
                         data = json.loads(myJson)
                         #add data to list
                         addDataToMalWatchedList(malWatchedList, data["data"], countData)
-                        print (len(data["data"]))
-
         else:
             print("Something went wrong")
             print(x.status_code)
             print(x.content)
-    print ("countC" + str(countData.countC))
-    print ("countD" + str(countData.countD))
-    print ("countW" + str(countData.countW))
-    print ("countH" + str(countData.countH))
-    print ("countP" + str(countData.countP))
+    # print ("countC" + str(countData.countC))
+    # print ("countD" + str(countData.countD))
+    # print ("countW" + str(countData.countW))
+    # print ("countH" + str(countData.countH))
+    # print ("countP" + str(countData.countP))
     print(len(malWatchedList))
     return malWatchedList
 
 def addDataToMalWatchedList(malWatchedList, data, countData):
     if (len(data) > 0):
         for datum in data:
-            if (datum["list_status"]["status"] == "completed"):
-                countData.countC = countData.countC+1
-            if (datum["list_status"]["status"] == "dropped"):
-                countData.countD = countData.countD+1
-            if (datum["list_status"]["status"] == "watching"):
-                countData.countW = countData.countW+1
-            if (datum["list_status"]["status"] == "on_hold"):
-                countData.countH = countData.countH+1
-                print(datum["node"]["title"])
-            if (datum["list_status"]["status"] == "plan_to_watch"):
-                countData.countP = countData.countP+1
+            # if (datum["list_status"]["status"] == "completed"):
+            #     countData.countC = countData.countC+1
+            # if (datum["list_status"]["status"] == "dropped"):
+            #     countData.countD = countData.countD+1
+            # if (datum["list_status"]["status"] == "watching"):
+            #     countData.countW = countData.countW+1
+            # if (datum["list_status"]["status"] == "on_hold"):
+            #     countData.countH = countData.countH+1
+            # if (datum["list_status"]["status"] == "plan_to_watch"):
+            #     countData.countP = countData.countP+1
             if (datum["list_status"]["status"] == "completed" or datum["list_status"]["status"] == "dropped" or datum["list_status"]["status"] == "watching" or datum["list_status"]["status"] == "on_hold"):
                 newRow = MalWatchedList(datum["node"]["id"], datum["node"]["title"])
                 malWatchedList.append(newRow)

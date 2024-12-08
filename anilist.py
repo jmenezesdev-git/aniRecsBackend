@@ -2,8 +2,9 @@ import json
 import re
 import requests
 import validators
+import random
 
-from databaseRequests import setNeedsGenreUpdate, tryAddGenreToDB, tryAddTagToDB
+from databaseRequests import getGenres, setNeedsGenreUpdate, tryAddGenreToDB, tryAddTagToDB
 from mal import MalWatchedList
 
 class AniListWatchedList:
@@ -12,6 +13,20 @@ class AniListWatchedList:
     self.malid = malid
     self.name = name
     self.listItemId = listItemId
+
+class Media:
+    def __init__(self, id, malid, title, isAdult, coverImage, description, startDate, averageScore):
+        self.id = id
+        self.malid = malid
+        self.title = title
+        self.isAdult = isAdult
+        self.coverImage = coverImage
+        self.description = description
+        self.startDate = startDate
+        self.averageScore = averageScore
+
+
+
 
 def getAniListWatchedList(anilistAccountOrUrl):
     aniListWatchedList = []
@@ -74,16 +89,11 @@ def getAniListWatchedList(anilistAccountOrUrl):
                     tempListItem = AniListWatchedList(entry["media"]["id"], entry["media"]["idMal"], entry["media"]["title"]["userPreferred"], listItemId)
                     aniListWatchedList.append(tempListItem)
                     listItemId = listItemId + 1
-            print(len(list["entries"]))
-        for item in aniListWatchedList:
-            if str(item.id) == "20912":
-                print (item.id)
-                print (item.listItemId)
-
+            
         aniListWatchedList[:] = [item for item in aniListWatchedList if determine(item, aniListWatchedList)]
         print("aniListWatchedList length = " + str(len(aniListWatchedList)))
 
-    return []
+    return aniListWatchedList
 
 def determine(listItem, aniListWatchedList):
     presenceCount = 0
@@ -132,7 +142,6 @@ def updateGenresList():
     response = requests.post(url, json={'query': query, 'variables': variables})
 
     if (response.status_code == 200):
-        # print("It didn't explode!")
         myJson = response.content.decode('utf8')
         data = json.loads(myJson)
         for datum in data["data"]["MediaTagCollection"]:
@@ -147,10 +156,8 @@ def updateGenresList():
     response2 = requests.post(url, json={'query': query2, 'variables': variables})
 
     if (response2.status_code == 200):
-        # print("It didn't explode!")
         myJson = response2.content.decode('utf8')
         data = json.loads(myJson)
-        # print (data)
         for datum in data["data"]["GenreCollection"]:
             tryAddGenreToDB(datum)
     else:
@@ -160,38 +167,287 @@ def updateGenresList():
         print(response2.json)
     setNeedsGenreUpdate()
 
-def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatchedList:AniListWatchedList):
+def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatchedList):
 
-    print("hello world!")
+    MWLArray = []
+    ALArray = []
+
+    try:
+        malWatchedList
+        MWLArray = convertMWLToIntArray(malWatchedList)
+    except NameError:
+        MWLArray = [0]
+
+    try:
+        anilistWatchedList
+        ALArray = convertMWLToIntArray(anilistWatchedList)
+    except NameError:
+        ALArray = [0]
+
+    genreInList = []
+    genreNotInList = []
+    tagInList = []
+    tagNotInList = []
+    page =  1
+
+    genreTagList = getGenres()
+
+    counter = 0
+
+    for excluded in requestInfo["excludedGenreFilter"]:
+        for tag in genreTagList["data"]:
+            if tag["_id"] == excluded["_id"]:
+                if tag["id"] != "":
+                    tagNotInList.append(tag["name"])
+                else:
+                    genreNotInList.append(tag["name"])
+
+    for excluded in requestInfo["genreFilter"]:
+        for tag in genreTagList["data"]:
+            if tag["_id"] == excluded["_id"]:
+                if tag["id"] != "":
+                    tagInList.append(tag["name"])
+                else:
+                    genreInList.append(tag["name"])
     
-    MWLArray = convertMWLToIntArray(malWatchedList)
-    ALArray = convertAWLToIntArray(anilistWatchedList)
+    print("Final Genre/TagInList")
+    print(genreInList)
+    print(tagInList)
+
+    #set perPage to 30 for LIVE
 
     url = 'https://graphql.anilist.co'
     query = '''
-    query Media($genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String], $idNotIn: [Int], $idMalNotIn: [Int], $isAdult: Boolean, $startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt) {
-    Media(genre_in: $genreIn, genre_not_in: $genreNotIn, tag_in: $tagIn, tag_not_in: $tagNotIn, id_not_in: $idNotIn, idMal_not_in: $idMalNotIn, isAdult: $isAdult, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, type: ANIME) {
-        averageScore
-        coverImage {
-        extraLarge
+    query Media($genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String], $idNotIn: [Int], $idMalNotIn: [Int], $isAdult: Boolean, $startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int) {
+    
+    Page(page: $page, perPage: 30) {
+        pageInfo {
+            hasNextPage
         }
-        isAdult
-        description
-        title {
-        userPreferred
-        romaji
-        english
+    
+        media(genre_in: $genreIn, genre_not_in: $genreNotIn, tag_in: $tagIn, tag_not_in: $tagNotIn, id_not_in: $idNotIn, idMal_not_in: $idMalNotIn, isAdult: $isAdult, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) {
+            averageScore
+            coverImage {
+                extraLarge
+            }
+            isAdult
+            description
+            title {
+                userPreferred
+                romaji
+                english
+            }
+            id
+            idMal
+            startDate {
+                day
+                month
+                year
+            }
+            relations {
+                edges {
+                    relationType
+                    node{
+                        averageScore
+                        coverImage {
+                            extraLarge
+                        }
+                        isAdult
+                        description
+                        title {
+                            english
+                            romaji
+                            userPreferred
+                        }
+                        id
+                        idMal
+                        startDate {
+                            day
+                            month
+                            year
+                        }
+                    }
+                }
+            }
         }
     }
     }
     '''
+    if (len(genreInList) == 0):
+        genreInList = None
+    if (len(tagInList) == 0):
+        tagInList = None
     variables = {
-        'idNotIn': ALArray,
-        'idMalNotIn': MWLArray,
-        'isAdult': requestInfo["enableAdultContent"],
-        'startDateGreater': requestInfo["minDate"] + "0000",
-        'startDateLesser': requestInfo["maxDate"] + "0000"
+            'genreIn': genreInList,
+            'genreNotIn': genreNotInList,
+            'tagIn': tagInList,
+            'tagNotIn': tagNotInList,
+            'idNotIn': ALArray,
+            'idMalNotIn': MWLArray,
+            'isAdult': requestInfo["enableAdultContent"],
+            'startDateGreater': requestInfo["minDate"] * 10000,
+            'startDateLesser': requestInfo["maxDate"] * 10000,
+            'page': page
+
+        }
+
+
+    if (requestInfo["enableAdultContent"] == True):
+        print("Enable Adult Content is True")
+        query = setQueryNeutralAdult()
+        variables = setVariablesNeutralAdult(genreInList, genreNotInList, tagInList, tagNotInList, ALArray, MWLArray, requestInfo, page)
+    else:
+        print("Enable Adult Content is not True")
+        print (str(requestInfo["enableAdultContent"]))
+
+    print ("ALArray length:" + str(len(ALArray)) )
+
+    
+
+    response = requests.post(url, json={'query': query, 'variables': variables})
+    listItemId = 0
+    if (response.status_code == 200):
+        myJson = response.content.decode('utf8')
+        data = json.loads(myJson)
+        print("PRE-DATA")
+        #print(data)
+        
+        resultsList = []
+        addNewResult = False
+        
+        for flResult in data["data"]["Page"]["media"]:
+            #print(flResult["title"])
+            addNewResult = False
+            newPotential = findPrequelResultRecursive(flResult, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
+            newResult = Media(newPotential["id"], newPotential["idMal"], newPotential["title"], newPotential["isAdult"], newPotential["coverImage"], newPotential["description"], newPotential["startDate"], newPotential["averageScore"])
+            skipAppend = False
+            for r in resultsList:
+                if r.id == newResult.id:
+                    skipAppend = True
+            if skipAppend == False:  
+                resultsList.append(newResult)
+        for r in resultsList:
+            #Not all Entries have an English title
+            if r.title["english"] != None:
+                print ("Media Results: " + str(r.id) + " " + r.title["english"])
+            else:   
+                print ("Media Results: " + str(r.id) + " " + r.title["userPreferred"])
+            
+
+        if len(resultsList) > 0:
+            return random.choice(resultsList)
+
+
+def findPrequelResultRecursive(node, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList):
+    url = 'https://graphql.anilist.co'
+    query='''
+    query Media($genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String], $mediaId: Int, $isAdult: Boolean, $idNotIn: [Int], $idMalNotIn: [Int], $startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt) {
+    Media(genre_in: $genreIn, genre_not_in: $genreNotIn, tag_in: $tagIn, tag_not_in: $tagNotIn, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC], id: $mediaId, isAdult: $isAdult, id_not_in: $idNotIn, idMal_not_in: $idMalNotIn, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser) {
+        averageScore
+        coverImage {
+            extraLarge
+        }
+        isAdult
+        description
+        title {
+            userPreferred
+            romaji
+            english
+        }
+        id
+        idMal
+        startDate {
+            day
+            month
+            year
+        }
+        relations {
+        edges {
+            relationType
+            node {
+                id
+                idMal
+                isAdult
+                coverImage {
+                    extraLarge
+                }
+                description
+                startDate {
+                    day
+                    month
+                    year
+                }
+                title {
+                    english
+                    romaji
+                    userPreferred
+                }
+                averageScore
+            }
+        }
+        }
     }
+    }
+    '''
+
+        #get Prequel if any, `return result of calling function with prequel`
+        #if no prequel exists, return self
+
+    for edge in node["relations"]["edges"]:
+        if edge["relationType"] == "PREQUEL":
+            prequelNode = edge["node"]
+            #print(prequelNode["title"])
+            variables = {
+                'genreIn': genreInList,
+                'genreNotIn': genreNotInList,
+                'tagIn': tagInList,
+                'tagNotIn': tagNotInList,
+                'idNotIn': ALArray,
+                'idMalNotIn': MWLArray,
+                'isAdult': requestInfo["enableAdultContent"],
+                'startDateGreater': requestInfo["minDate"] * 10000,
+                'startDateLesser': requestInfo["maxDate"] * 10000,
+                'mediaId': prequelNode["id"] #prequel ID, not node ID
+            }
+            response = requests.post(url, json={'query': query, 'variables': variables})
+            #print("Awaiting Response")
+            #Test if Prequel Valid, if so call function recursively with prequel as node
+            if (response.status_code == 200):
+                myJson = response.content.decode('utf8')
+                data = json.loads(myJson)
+                #print("I have recurred")
+                return findPrequelResultRecursive(data["data"]["Media"], ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
+            #else return self
+            else: 
+                #print(response.status_code)
+                return node
+    return node
+
+                            
+def isAppropriate(node, requestInfo):
+    if requestInfo["enableAdultContent"] == False:
+        if node["isAdult"] == True:
+            return False
+    if requestInfo["minDate"] * 10000 > genIntDate(node["startDate"]) or requestInfo["maxDate"] * 10000 < genIntDate(node["startDate"]):
+            return False
+    return True
+
+def seenIt(mediaNode, ALArray, MWLArray):
+    for item in ALArray:
+        if mediaNode["id"] == item:
+            return True
+
+    for item in MWLArray:
+        if mediaNode["idMal"] == item:
+            return True
+    return False
+
+
+def genIntDate(startDate):
+    if startDate != []:
+        return int(str(startDate["year"]) + str(startDate["month"]) + str(startDate["day"]))
+    else:
+        return 0
 
 def convertMWLToIntArray(malWatchedList:MalWatchedList):
     returnArray = []
@@ -201,6 +457,77 @@ def convertMWLToIntArray(malWatchedList:MalWatchedList):
 
 def convertAWLToIntArray(anilistWatchedList:AniListWatchedList):
     returnArray = []
-    for listItem in malWatchedList:
+    for listItem in anilistWatchedList:
         returnArray.append(listItem.id)
     return returnArray
+
+def setQueryNeutralAdult():
+    return '''
+    query Media($genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String], $idNotIn: [Int], $idMalNotIn: [Int], $startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int) {
+    
+    Page(page: $page, perPage: 30) {
+        pageInfo {
+            hasNextPage
+        }
+    
+        media(genre_in: $genreIn, genre_not_in: $genreNotIn, tag_in: $tagIn, tag_not_in: $tagNotIn, id_not_in: $idNotIn, idMal_not_in: $idMalNotIn, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) {
+            averageScore
+            coverImage {
+                extraLarge
+            }
+            isAdult
+            description
+            title {
+                userPreferred
+                romaji
+                english
+            }
+            id
+            idMal
+            startDate {
+                day
+                month
+                year
+            }
+            relations {
+                edges {
+                    relationType
+                    node{
+                        averageScore
+                        coverImage {
+                            extraLarge
+                        }
+                        isAdult
+                        description
+                        title {
+                            english
+                            romaji
+                            userPreferred
+                        }
+                        id
+                        idMal
+                        startDate {
+                            day
+                            month
+                            year
+                        }
+                    }
+                }
+            }
+        }
+    }
+    }
+    '''
+
+def setVariablesNeutralAdult(genreInList, genreNotInList, tagInList, tagNotInList, ALArray, MWLArray, requestInfo, page):
+    return {
+        'genreIn': genreInList,
+        'genreNotIn': genreNotInList,
+        'tagIn': tagInList,
+        'tagNotIn': tagNotInList,
+        'idNotIn': ALArray,
+        'idMalNotIn': MWLArray,
+        'startDateGreater': requestInfo["minDate"] * 10000,
+        'startDateLesser': requestInfo["maxDate"] * 10000,
+        'page': page
+    }

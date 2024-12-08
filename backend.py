@@ -20,6 +20,9 @@ def testRequestContextStuff():
 
 @app.route("/getGenres", methods=['GET'])
 def getGenresRequest():
+    #print("allowAdult = ")
+    #print(request.query_string)
+    #print(request.args.get('allowAdult'))
     if(preCheckUpdateGenreList()):
         updateGenresList()
     genreList = getGenres()
@@ -36,17 +39,37 @@ def getRecRequest():
     excludedGenreFilter=request.json["excludedGenreFilter"]
     malWatchedList = []
     anilistWatchedList = []
-    #if (len(malAccount) > 0):
-    #    malWatchedList = getMalWatchedList(malAccount, enableAdultContent)
-    #if (len(anilistAccount) > 0):
-    #    anilistWatchedList = getAniListWatchedList(anilistAccount)
+    if (len(malAccount) > 0):
+        malWatchedList = getMalWatchedList(malAccount, enableAdultContent)
+    if (len(anilistAccount) > 0):
+        anilistWatchedList = getAniListWatchedList(anilistAccount)
 
-    for filter in genreFilter:
-        print (filter)
 
-    getRecommendedAnime(request.json, malWatchedList, anilistWatchedList)
 
-    return {'requestArgs': request.json}
+    rec = getRecommendedAnime(request.json, malWatchedList, anilistWatchedList)
+    if rec:
+        if rec.title["english"] != None:
+            print ("I have a recommendation! It is: " + rec.title["english"])
+        else:
+            print ("I have a recommendation! It is: " + rec.title["userPreferred"])
+    
+        return json.dumps(toDict(rec))#{'requestArgs': request.json}
+    return {'error': 'Unable to find matching Anime'}
 
 if __name__ == '__main__':
     app.run()
+
+def toDict(mediaObj):
+    newDict = {}
+    newDict["id"] = mediaObj.id
+    newDict["malid"] = mediaObj.malid
+    newDict["titleEN"] = mediaObj.title["english"]
+    newDict["titleUserPref"] = mediaObj.title["userPreferred"]
+    newDict["titleRomaji"] = mediaObj.title["romaji"]
+    
+    newDict["isAdult"] = mediaObj.isAdult
+    newDict["coverImage"] = mediaObj.coverImage["extraLarge"]
+    newDict["description"] = mediaObj.description
+    newDict["startDate"] = mediaObj.startDate
+    newDict["averageScore"] = mediaObj.averageScore
+    return newDict
