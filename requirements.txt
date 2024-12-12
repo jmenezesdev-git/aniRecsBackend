@@ -1,0 +1,6 @@
+pymongo
+flask
+flask_cors
+datetime
+requests
+validators

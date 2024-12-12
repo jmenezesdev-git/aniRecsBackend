@@ -14,7 +14,7 @@ def preCheckUpdateGenreList():
 def checkNeedGenreUpdate():
     #If genres was updated in the last hour - return false
     #otherwise return true
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
     mydb = myclient["anirecsdb"]
     myCollection = mydb["genreupdatetime"]
     myExistingTime = myCollection.find()
@@ -29,7 +29,7 @@ def checkNeedGenreUpdate():
     
 def setNeedsGenreUpdate():
     #set the last updated time to the current time
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
     mydb = myclient["anirecsdb"]
     myCollection = mydb["genreupdatetime"]
     myExistingTime = myCollection.find()
@@ -45,7 +45,7 @@ def setNeedsGenreUpdate():
 
 def tryAddTagToDB(tag):
 
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]
@@ -68,7 +68,7 @@ def tryAddTagToDB(tag):
     x = myCollection.insert_one(mydict)
 
 def tryAddGenreToDB(genre):
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]
@@ -86,7 +86,7 @@ def tryAddGenreToDB(genre):
     x = myCollection.insert_one(mydict)
 
 def getGenres():
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]

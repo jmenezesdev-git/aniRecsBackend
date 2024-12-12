@@ -266,6 +266,11 @@ def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatch
                             month
                             year
                         }
+                        genres
+                        tags {
+                            name
+                            id
+                        }
                     }
                 }
             }
@@ -318,8 +323,15 @@ def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatch
         for flResult in data["data"]["Page"]["media"]:
             #print(flResult["title"])
             addNewResult = False
-            newPotential = findPrequelResultRecursive(flResult, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
-            newResult = Media(newPotential["id"], newPotential["idMal"], newPotential["title"], newPotential["isAdult"], newPotential["coverImage"], newPotential["description"], newPotential["startDate"], newPotential["averageScore"])
+            #prequelMatchCheck verifies if prequel is a match and can be used, otherwise returns None
+            prequel = prequelMatchCheck(flResult, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
+            if (prequel != None):
+                newPotential = findPrequelResultRecursive(prequel, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
+                newResult = Media(newPotential["id"], newPotential["idMal"], newPotential["title"], newPotential["isAdult"], newPotential["coverImage"], newPotential["description"], newPotential["startDate"], newPotential["averageScore"])
+                
+            else:
+                print("PREQUEL? REJECTED")
+                newResult = Media(flResult["id"], flResult["idMal"], flResult["title"], flResult["isAdult"], flResult["coverImage"], flResult["description"], flResult["startDate"], flResult["averageScore"])
             skipAppend = False
             for r in resultsList:
                 if r.id == newResult.id:
@@ -336,6 +348,69 @@ def getRecommendedAnime(requestInfo, malWatchedList:MalWatchedList, anilistWatch
 
         if len(resultsList) > 0:
             return random.choice(resultsList)
+        
+#prequelMatchCheck verifies if prequel is a match and can be used, otherwise returns None
+def prequelMatchCheck(flResult, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList):
+    for edge in flResult["relations"]["edges"]:
+        if edge["relationType"] == "PREQUEL":
+            prequelNode = edge["node"]
+            if(checkGenreListMatches(prequelNode, genreInList, genreNotInList) and tagListMatches(prequelNode, tagInList, tagNotInList)):
+                if(not(ALArrayMatches(prequelNode, ALArray)) and not(MWLArrayMatches(prequelNode, MWLArray)) and requestInfoMatches(prequelNode, requestInfo)):
+                    return prequelNode
+    return None
+
+def checkGenreListMatches(prequelNode, genreInList, genreNotInList):
+    for listItem in prequelNode["genres"]:
+        if genreNotInList != None:
+            for genreNotIn in genreNotInList:
+                if (listItem == genreNotIn):
+                    return False
+        if genreInList != None:
+            found = False
+            for genreIn in genreInList:
+                if (genreIn == listItem):
+                    found=True
+            if found == False:
+                return False
+    return True
+
+def tagListMatches(prequelNode, tagInList, tagNotInList):
+    for listItem in prequelNode["tags"]:
+        if tagNotInList != None:
+            for tagNotIn in tagNotInList:
+                if (listItem == tagNotIn["name"]):
+                    return False
+        if tagInList != None:
+            found = False
+            for tagIn in tagInList:
+                if (tagIn == listItem["name"]):
+                    found=True
+            if found == False:
+                return False
+    return True
+
+
+def ALArrayMatches(prequelNode, ALArray):
+    for alItem in ALArray:
+        if alItem == prequelNode["id"]:
+            return False
+    return True
+
+def MWLArrayMatches(prequelNode, MWLArray):
+    for MalItem in MWLArray:
+        if MalItem == prequelNode["idMal"]:
+            return False
+    return True
+
+def requestInfoMatches(prequelNode, requestInfo):
+    if requestInfo["enableAdultContent"] == False:
+        if prequelNode["isAdult"] == True:
+                return False
+    if prequelNode["startDate"]["year"] < requestInfo["minDate"]:
+        return False
+    if prequelNode["startDate"]["year"] > requestInfo["maxDate"]:
+        return False
+    return True
 
 
 def findPrequelResultRecursive(node, ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList):
@@ -415,7 +490,7 @@ def findPrequelResultRecursive(node, ALArray, MWLArray, requestInfo, genreInList
             if (response.status_code == 200):
                 myJson = response.content.decode('utf8')
                 data = json.loads(myJson)
-                #print("I have recurred")
+                print("I have recurred")
                 return findPrequelResultRecursive(data["data"]["Media"], ALArray, MWLArray, requestInfo, genreInList, genreNotInList, tagInList, tagNotInList)
             #else return self
             else: 

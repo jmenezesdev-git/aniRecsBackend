@@ -7,7 +7,7 @@ from databaseRequests import getGenres, preCheckUpdateGenreList
 from mal import getMalWatchedList
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://localhost:3001"]}})
+cors = CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://localhost:3001", "http://localhost:3020"]}})
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 @app.route("/", methods=['POST', 'GET'])
