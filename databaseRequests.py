@@ -14,7 +14,14 @@ def preCheckUpdateGenreList():
 def checkNeedGenreUpdate():
     #If genres was updated in the last hour - return false
     #otherwise return true
-    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
+    with open('secrets.json') as jsonFile:
+        secretsDict = json.load(jsonFile)
+    if(len(secretsDict) > 0):
+        myclient = pymongo.MongoClient(secretsDict["mongoString"])
+    else:
+        myclient = pymongo.MongoClient("mongodb://anirecsmongo")
+
+     #localhost:27017/ #
     mydb = myclient["anirecsdb"]
     myCollection = mydb["genreupdatetime"]
     myExistingTime = myCollection.find()
@@ -29,7 +36,12 @@ def checkNeedGenreUpdate():
     
 def setNeedsGenreUpdate():
     #set the last updated time to the current time
-    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
+    with open('secrets.json') as jsonFile:
+        secretsDict = json.load(jsonFile)
+    if(len(secretsDict) > 0):
+        myclient = pymongo.MongoClient(secretsDict["mongoString"])
+    else:
+        myclient = pymongo.MongoClient("mongodb://anirecsmongo")
     mydb = myclient["anirecsdb"]
     myCollection = mydb["genreupdatetime"]
     myExistingTime = myCollection.find()
@@ -42,10 +54,14 @@ def setNeedsGenreUpdate():
     x = myCollection.insert_one({"updatedt" : datetime.now()})
 
 
-
 def tryAddTagToDB(tag):
 
-    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
+    with open('secrets.json') as jsonFile:
+        secretsDict = json.load(jsonFile)
+    if(len(secretsDict) > 0):
+        myclient = pymongo.MongoClient(secretsDict["mongoString"])
+    else:
+        myclient = pymongo.MongoClient("mongodb://anirecsmongo")
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]
@@ -68,7 +84,12 @@ def tryAddTagToDB(tag):
     x = myCollection.insert_one(mydict)
 
 def tryAddGenreToDB(genre):
-    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
+    with open('secrets.json') as jsonFile:
+        secretsDict = json.load(jsonFile)
+    if(len(secretsDict) > 0):
+        myclient = pymongo.MongoClient(secretsDict["mongoString"])
+    else:
+        myclient = pymongo.MongoClient("mongodb://anirecsmongo")
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]
@@ -86,7 +107,12 @@ def tryAddGenreToDB(genre):
     x = myCollection.insert_one(mydict)
 
 def getGenres():
-    myclient = pymongo.MongoClient("mongodb://anirecsmongo") #localhost:27017/
+    with open('secrets.json') as jsonFile:
+        secretsDict = json.load(jsonFile)
+    if(len(secretsDict) > 0):
+        myclient = pymongo.MongoClient(secretsDict["mongoString"])
+    else:
+        myclient = pymongo.MongoClient("mongodb://anirecsmongo")
     mydb = myclient["anirecsdb"]
 
     myCollection = mydb["genres"]
