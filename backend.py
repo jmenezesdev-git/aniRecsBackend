@@ -6,10 +6,15 @@ import requests
 from anilist import getAniListWatchedList, getRecommendedAnime, updateGenresList
 from databaseRequests import getGenres, preCheckUpdateGenreList
 from mal import getMalWatchedList
+from gcpTasks import createUpdateGenresTask
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/*": {"origins": ["etherealcluster.sij5s.mongodb.net", "https://anirecs.web.app", "https://anirecs.firebaseapp.com", "https://anirecs.etherealdev.com", "http://localhost:3000", "http://localhost:3001", "http://localhost:3020"]}})
+cors = CORS(app, resources={r"/*": {"origins": ["etherealcluster.sij5s.mongodb.net", "https://anirecs.web.app", "https://anirecs.firebaseapp.com", "https://anirecs.etherealdev.com", "http://localhost:3000", "http://localhost:3001", "http://localhost:3020", "https://anirecsbackend-951543336432.us-central1.run.app"]}})
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+
+
 
 @app.route("/", methods=['POST', 'GET'])
 def hello_world():
@@ -31,13 +36,15 @@ def testCurrentIp():
 
 @app.route("/getGenres", methods=['GET'])
 def getGenresRequest():
-    #print("allowAdult = ")
-    #print(request.query_string)
-    #print(request.args.get('allowAdult'))
     if(preCheckUpdateGenreList()):
-        updateGenresList()
+        createUpdateGenresTask()
     genreList = getGenres()
     return genreList
+
+@app.route("/updateGenres", methods=['POST'])
+def updateGenresRequest():
+    if(preCheckUpdateGenreList()):
+        updateGenresList()
 
 def toDict(mediaObj):
     newDict = {}

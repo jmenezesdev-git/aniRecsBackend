@@ -1,7 +1,7 @@
 ####mongoDB
 import json
 import pymongo
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 def preCheckUpdateGenreList():
     if (checkNeedGenreUpdate()):
@@ -26,10 +26,10 @@ def checkNeedGenreUpdate():
     myCollection = mydb["genreupdatetime"]
     myExistingTime = myCollection.find()
     for existingTime in myExistingTime:
-        print ("Check - existingTime")
-        print (existingTime)
-        anHourAgo = datetime.now() - timedelta(hours=1)
-        if (existingTime["updatedt"] > anHourAgo): #if this is more recent than an hour ago
+        ##Online hosted server is using UTC time, we need to convert to utc and treat received DT from that timezone (GMT)
+        timeInDB = existingTime["updatedt"].replace(tzinfo=timezone.utc)
+        twentyThreeHoursAgo = datetime.now(timezone.utc) - timedelta(hours=23) 
+        if (timeInDB > twentyThreeHoursAgo): #if this is more recent than 23hrs ago
             return False
 
     return True
